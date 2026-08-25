@@ -1,0 +1,15 @@
+<mat-toolbar color="primary" class="app-toolbar">
+  <mat-icon>calendar_month</mat-icon>
+  <span class="app-title">{{ title }}</span>
+  <span class="spacer"></span>
+  <a mat-button routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+    <mat-icon>event</mat-icon> События
+  </a>
+  <a mat-button routerLink="/owner" routerLinkActive="active-link">
+    <mat-icon>dashboard</mat-icon> Владелец
+  </a>
+</mat-toolbar>
+
+<main class="main-content">
+  <router-outlet></router-outlet>
+</main>

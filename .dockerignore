@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/playwright-report
+frontend/test-results
+npm-debug.log
+**/*.log

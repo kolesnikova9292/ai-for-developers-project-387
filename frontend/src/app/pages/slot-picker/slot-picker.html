@@ -1,0 +1,121 @@
+﻿<div class="page-container">
+  <div class="page-header">
+    <button mat-icon-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1 class="page-title">
+      Выберите дату и время
+      <span *ngIf="eventType" class="event-type-info">
+        для <strong>{{ eventType.title }}</strong> · {{ eventType.durationMinutes }} минут
+      </span>
+    </h1>
+  </div>
+
+  <div *ngIf="loading" class="spinner-wrapper">
+    <mat-spinner></mat-spinner>
+  </div>
+
+  <div *ngIf="error" class="error-message">{{ error }}</div>
+
+  <div *ngIf="!loading && !error" class="picker-layout">
+
+    <!-- Левая колонка: календарь -->
+    <mat-card appearance="outlined" class="calendar-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>calendar_month</mat-icon>
+        <mat-card-title>Выберите день</mat-card-title>
+        <mat-card-subtitle>Подсвечены дни с доступными слотами</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-calendar
+          [minDate]="today"
+          [maxDate]="maxDate"
+          [dateFilter]="dateFilter"
+          [dateClass]="dateClass"
+          [selected]="selectedDate"
+          (selectedChange)="onDateSelected($event)">
+        </mat-calendar>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Правая колонка: слоты времени -->
+    <div class="slots-column">
+      <mat-card *ngIf="!selectedDate" appearance="outlined" class="hint-card">
+        <mat-card-content>
+          <div class="hint">
+            <mat-icon>touch_app</mat-icon>
+            <p>Выберите день в календаре, чтобы увидеть доступное время</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <ng-container *ngIf="selectedDate">
+        <mat-card appearance="outlined" class="time-slots-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>schedule</mat-icon>
+            <mat-card-title>{{ formatDateLabel(selectedDate) }}</mat-card-title>
+            <mat-card-subtitle>{{ slotsForSelectedDay.length }} слотов доступно</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="time-buttons">
+              <button
+                *ngFor="let slot of slotsForSelectedDay"
+                mat-stroked-button
+                [class.selected-slot]="selectedSlot?.id === slot.id"
+                (click)="selectSlot(slot)">
+                <mat-icon>access_time</mat-icon>
+                {{ formatTime(slot.startTime) }}
+                <span class="duration">{{ slot.durationMinutes }} мин</span>
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Форма бронирования -->
+        <mat-card *ngIf="selectedSlot" appearance="outlined" class="booking-form-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>person_add</mat-icon>
+            <mat-card-title>Ваши данные</mat-card-title>
+            <mat-card-subtitle>{{ formatTime(selectedSlot.startTime) }} · {{ selectedSlot.durationMinutes }} мин</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <form [formGroup]="form" class="booking-form">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Имя</mat-label>
+                <input matInput formControlName="guestName" placeholder="Ваше имя" />
+                <mat-icon matPrefix>person</mat-icon>
+                <mat-error *ngIf="form.get('guestName')?.hasError('required')">Обязательное поле</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Email</mat-label>
+                <input matInput formControlName="guestEmail" type="email" placeholder="your@email.com" />
+                <mat-icon matPrefix>email</mat-icon>
+                <mat-error *ngIf="form.get('guestEmail')?.hasError('required')">Обязательное поле</mat-error>
+                <mat-error *ngIf="form.get('guestEmail')?.hasError('email')">Некорректный email</mat-error>
+              </mat-form-field>
+            </form>
+          </mat-card-content>
+          <mat-card-actions>
+            <button mat-flat-button color="primary" (click)="submitBooking()" [disabled]="form.invalid || booking">
+              <mat-icon>check_circle</mat-icon>
+              {{ booking ? 'Бронирование...' : 'Забронировать' }}
+            </button>
+          </mat-card-actions>
+        </mat-card>
+
+        <!-- Подтверждение -->
+        <mat-card *ngIf="confirmedBooking" appearance="outlined" class="confirmed-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar style="color: #4caf50">check_circle</mat-icon>
+            <mat-card-title>Бронирование подтверждено!</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <p><strong>Событие:</strong> {{ confirmedBooking.eventTypeTitle }}</p>
+            <p><strong>Время:</strong> {{ formatTime(confirmedBooking.startTime) }}</p>
+            <p><strong>Гость:</strong> {{ confirmedBooking.guestName }} ({{ confirmedBooking.guestEmail }})</p>
+          </mat-card-content>
+        </mat-card>
+      </ng-container>
+    </div>
+  </div>
+</div>

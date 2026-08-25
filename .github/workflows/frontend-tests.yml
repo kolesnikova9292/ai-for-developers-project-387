@@ -1,0 +1,47 @@
+name: frontend-tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  playwright-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          rm -rf node_modules package-lock.json
+          npm install --include=dev --no-audit --no-fund
+          npm ls @playwright/test --depth=0
+
+      - name: Install Playwright browser
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: Run integration tests
+        run: npx --no-install playwright test
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
