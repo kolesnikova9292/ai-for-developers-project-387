@@ -111,7 +111,7 @@
           </mat-card-header>
           <mat-card-content>
             <p><strong>Событие:</strong> {{ confirmedBooking.eventTypeTitle }}</p>
-            <p><strong>Время:</strong> {{ formatTime(confirmedBooking.startTime) }}</p>
+            <p><strong>Время:</strong> {{ formatTime(confirmedBooking.startTime) }} ({{ formatDate(confirmedBooking.startTime) }})</p>
             <p><strong>Гость:</strong> {{ confirmedBooking.guestName }} ({{ confirmedBooking.guestEmail }})</p>
           </mat-card-content>
         </mat-card>

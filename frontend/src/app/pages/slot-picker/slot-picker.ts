@@ -108,6 +108,25 @@ export class SlotPickerComponent implements OnInit {
     return result;
   }
 
+  private removeBookedSlotFromMap(slotId: string): void {
+    for (const [key, slots] of this.slotsByDay.entries()) {
+      const filtered = slots.filter(s => s.id !== slotId);
+      if (filtered.length !== slots.length) {
+        if (filtered.length === 0) {
+          this.slotsByDay.delete(key);
+        } else {
+          this.slotsByDay.set(key, filtered);
+        }
+        break;
+      }
+    }
+    if (this.selectedDate) {
+      this.slotsForSelectedDay = this.slotsByDay.get(
+        this.toDateKey(this.selectedDate)
+      ) ?? [];
+    }
+  }
+
   private buildSlotsByDay(slots: Slot[]): void {
     this.slotsByDay.clear();
     for (const slot of slots) {
@@ -149,6 +168,12 @@ export class SlotPickerComponent implements OnInit {
     return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   }
 
+  formatDate(iso: string): string {
+    const date = new Date(iso);
+    const dayAndMonth = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    return `${dayAndMonth} ${date.getFullYear()} года`;
+  }
+
   formatDateLabel(date: Date): string {
     return date.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
   }
@@ -177,6 +202,7 @@ export class SlotPickerComponent implements OnInit {
         this.confirmedBooking = actual;
         this.bookingState.add(actual);
         this.booking = false;
+        this.removeBookedSlotFromMap(actual.slotId);
         this.selectedSlot = null;
         this.snackBar.open('Бронирование успешно создано!', 'OK', { duration: 4000 });
       },
