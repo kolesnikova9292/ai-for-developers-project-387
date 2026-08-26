@@ -1,0 +1,304 @@
+openapi: 3.0.0
+info:
+  title: Event Types API
+  version: 0.0.0
+tags: []
+paths:
+  /bookings:
+    post:
+      operationId: GuestBookings_create
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+              example:
+                id: booking-new-001
+                eventTypeId: et-001
+                eventTypeTitle: Консультация
+                slotId: slot-001
+                startTime: '2026-08-11T10:00:00Z'
+                durationMinutes: 30
+                guestName: Иван Петров
+                guestEmail: ivan.petrov@example.com
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotUnavailableError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+  /event-types:
+    get:
+      operationId: EventTypes_list
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventType'
+              example:
+                - id: et-001
+                  ownerId: owner-yulia-001
+                  title: Консультация
+                  description: Индивидуальная консультация с Юлией — обсуждение вашего проекта или вопроса.
+                  durationMinutes: 30
+                - id: et-002
+                  ownerId: owner-yulia-001
+                  title: Стратегическая сессия
+                  description: Глубокий разбор стратегии, планирование и постановка целей.
+                  durationMinutes: 60
+                - id: et-003
+                  ownerId: owner-yulia-001
+                  title: Быстрый созвон
+                  description: Короткий звонок для оперативного решения вопроса.
+                  durationMinutes: 15
+    post:
+      operationId: EventTypes_create
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+              example:
+                id: et-new-001
+                ownerId: owner-yulia-001
+                title: Новое событие
+                description: Описание нового события
+                durationMinutes: 45
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventTypeRequest'
+  /event-types/{eventTypeId}/slots:
+    get:
+      operationId: EventTypeSlots_listAvailable
+      parameters:
+        - name: eventTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Slot'
+              example:
+                - id: slot-001
+                  eventTypeId: et-001
+                  startTime: '2026-08-11T10:00:00Z'
+                  durationMinutes: 15
+                  isBooked: false
+                - id: slot-002
+                  eventTypeId: et-001
+                  startTime: '2026-08-11T14:00:00Z'
+                  durationMinutes: 30
+                  isBooked: false
+                - id: slot-003
+                  eventTypeId: et-001
+                  startTime: '2026-08-12T10:00:00Z'
+                  durationMinutes: 60
+                  isBooked: false
+                - id: slot-004
+                  eventTypeId: et-001
+                  startTime: '2026-08-12T14:00:00Z'
+                  durationMinutes: 30
+                  isBooked: false
+                - id: slot-005
+                  eventTypeId: et-001
+                  startTime: '2026-08-13T10:00:00Z'
+                  durationMinutes: 60
+                  isBooked: false
+  /owners/{ownerId}/bookings/upcoming:
+    get:
+      operationId: OwnerBookings_list
+      parameters:
+        - name: ownerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+              example:
+                - id: booking-001
+                  eventTypeId: et-001
+                  eventTypeTitle: Консультация
+                  slotId: slot-010
+                  startTime: '2026-08-13T10:00:00Z'
+                  durationMinutes: 30
+                  guestName: Иван Петров
+                  guestEmail: ivan.petrov@example.com
+                - id: booking-002
+                  eventTypeId: et-002
+                  eventTypeTitle: Стратегическая сессия
+                  slotId: slot-011
+                  startTime: '2026-08-14T14:00:00Z'
+                  durationMinutes: 60
+                  guestName: Мария Сидорова
+                  guestEmail: maria.sidorova@example.com
+components:
+  schemas:
+    Booking:
+      type: object
+      required:
+        - id
+        - eventTypeId
+        - eventTypeTitle
+        - slotId
+        - startTime
+        - durationMinutes
+        - guestName
+        - guestEmail
+      properties:
+        id:
+          type: string
+        eventTypeId:
+          type: string
+        eventTypeTitle:
+          type: string
+        slotId:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          format: int32
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+    ConflictError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+    CreateBookingRequest:
+      type: object
+      required:
+        - slotId
+        - guestName
+        - guestEmail
+      properties:
+        slotId:
+          type: string
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+    CreateEventTypeRequest:
+      type: object
+      required:
+        - ownerId
+        - title
+        - description
+        - durationMinutes
+      properties:
+        ownerId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+    EventType:
+      type: object
+      required:
+        - id
+        - ownerId
+        - title
+        - description
+        - durationMinutes
+      properties:
+        id:
+          type: string
+        ownerId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+    Owner:
+      type: object
+      required:
+        - id
+        - name
+        - email
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+    Slot:
+      type: object
+      required:
+        - id
+        - eventTypeId
+        - startTime
+        - durationMinutes
+        - isBooked
+      properties:
+        id:
+          type: string
+        eventTypeId:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          format: int32
+        isBooked:
+          type: boolean
+    SlotUnavailableError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string

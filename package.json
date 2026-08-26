@@ -1,0 +1,14 @@
+{
+  "name": "event-types-api",
+  "version": "0.1.9",
+  "private": true,
+  "scripts": {
+    "mock": "prism mock tsp-output/@typespec/openapi3/openapi.yaml --port 4010 --cors"
+  },
+  "dependencies": {
+    "@stoplight/prism-cli": "^5.14.2",
+    "@typespec/compiler": "latest",
+    "@typespec/http": "latest",
+    "@typespec/openapi3": "latest"
+  }
+}

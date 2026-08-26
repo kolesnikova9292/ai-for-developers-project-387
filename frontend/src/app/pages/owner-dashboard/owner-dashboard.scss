@@ -1,0 +1,68 @@
+.page-container {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1976d2;
+  margin: 0;
+}
+
+.search-card {
+  .search-form {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .owner-field {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  button {
+    margin-top: 4px;
+    height: 56px;
+  }
+}
+
+.spinner-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.bookings-table {
+  width: 100%;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: #999;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.error-message {
+  color: #c62828;
+  text-align: center;
+  padding: 24px;
+}

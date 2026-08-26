@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: event-types-app
+    runtime: docker
+    plan: free
+    autoDeploy: true
