@@ -1,4 +1,12 @@
-﻿# Changelog
+# Changelog
+
+## [0.1.10](https://github.com/kolesnikova9292/ai-for-developers-project-387/compare/event-types-api-v0.1.9...event-types-api-v0.1.10) (2026-08-26)
+
+
+### Bug Fixes
+
+* align release-please config path ([04dc032](https://github.com/kolesnikova9292/ai-for-developers-project-387/commit/04dc03233cc24449e6ac666145a895d177eca942))
+* **docker:** stabilize npm install in container ([94d9f61](https://github.com/kolesnikova9292/ai-for-developers-project-387/commit/94d9f61c598d3c57ce3a02521519f638830c185f))
 
 ## [0.1.9](https://github.com/kolesnikova9292/ai-for-developers-project-387/compare/event-types-api-v0.1.8...event-types-api-v0.1.9) (2026-08-13)
 
