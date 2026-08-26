@@ -1,0 +1,83 @@
+name: nightly-lighthouse
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Install dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix frontend --no-audit --no-fund
+
+      - name: Build frontend
+        run: npm run build --prefix frontend -- --configuration production
+
+      - name: Start API mock and app server
+        run: |
+          mkdir -p lighthouse-reports
+          nohup npm run mock > lighthouse-reports/mock.log 2>&1 &
+          nohup node server.js > lighthouse-reports/app.log 2>&1 &
+
+      - name: Wait for app readiness
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:10000/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App did not become ready in time"
+          cat lighthouse-reports/mock.log || true
+          cat lighthouse-reports/app.log || true
+          exit 1
+
+      - name: Run Lighthouse CLI audits
+        run: |
+          URLS=(
+            "http://127.0.0.1:10000/"
+            "http://127.0.0.1:10000/slots/et-001"
+            "http://127.0.0.1:10000/owner"
+          )
+
+          for url in "${URLS[@]}"; do
+            slug="$(echo "$url" | sed 's|https\?://||; s|[^a-zA-Z0-9]|-|g')"
+            npx --yes lighthouse "$url" \
+              --output html \
+              --output json \
+              --output-path "lighthouse-reports/${slug}" \
+              --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage" \
+              --quiet
+          done
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+          if-no-files-found: warn
