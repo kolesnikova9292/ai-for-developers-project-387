@@ -1,0 +1,189 @@
+name: agent-orchestrator
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request:
+    types: [labeled]
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: agent-orchestrator-${{ github.event_name }}-${{ github.event.issue.number || github.event.pull_request.number || 'schedule' }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+      reason: ${{ steps.gate.outputs.reason }}
+      mode: ${{ steps.gate.outputs.mode }}
+      target_number: ${{ steps.gate.outputs.target_number }}
+      target_kind: ${{ steps.gate.outputs.target_kind }}
+      command: ${{ steps.gate.outputs.command }}
+    steps:
+      - name: Gate trigger
+        id: gate
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const payload = context.payload;
+            const eventName = context.eventName;
+            const actor = context.actor || '';
+            const senderType = payload.sender?.type || 'User';
+            const actorIsBot = actor.endsWith('[bot]') || senderType === 'Bot';
+
+            const issue = payload.issue;
+            const pr = payload.pull_request;
+            const comment = payload.comment;
+            const labelName = payload.label?.name || '';
+
+            const issueBody = (issue?.body || '').trim();
+            const commentBody = (comment?.body || '').trim();
+            const commandRegex = /^\/(oc|agent)\b([^\r\n]*)/i;
+            const bodyWithCommand = commentBody || issueBody;
+            const commandMatch = bodyWithCommand.match(commandRegex);
+            const isAgentManaged = bodyWithCommand.includes('<!-- agent-managed -->');
+
+            let shouldRun = false;
+            let reason = 'No matching trigger';
+            let mode = '';
+            let targetNumber = '';
+            let targetKind = '';
+            let command = '';
+
+            if (actorIsBot) {
+              reason = `Skip bot actor: ${actor}`;
+            } else if (isAgentManaged) {
+              reason = 'Skip self-managed marker';
+            } else if (eventName === 'schedule' || eventName === 'workflow_dispatch') {
+              shouldRun = true;
+              mode = 'schedule';
+              reason = `Scheduled/manual run: ${eventName}`;
+            } else if (eventName === 'issue_comment') {
+              if (commandMatch) {
+                shouldRun = true;
+                mode = 'command';
+                command = commandMatch[0].trim();
+                targetNumber = String(issue.number);
+                targetKind = issue.pull_request ? 'pr' : 'issue';
+                reason = `Accepted command on ${targetKind} #${targetNumber}`;
+              } else {
+                reason = 'Comment without target command';
+              }
+            } else if (eventName === 'pull_request_review_comment') {
+              if (commandMatch) {
+                shouldRun = true;
+                mode = 'command';
+                command = commandMatch[0].trim();
+                targetNumber = String(pr.number);
+                targetKind = 'pr';
+                reason = `Accepted review command on PR #${targetNumber}`;
+              } else {
+                reason = 'Review comment without target command';
+              }
+            } else if (eventName === 'issues') {
+              const labels = (issue.labels || []).map((l) => l.name);
+              const hasRunLabel = labelName === 'agent:run' || labels.includes('agent:run');
+              const hasCommandInIssue = commandRegex.test(issueBody);
+              if (hasRunLabel || hasCommandInIssue) {
+                shouldRun = true;
+                mode = 'command';
+                command = hasCommandInIssue ? (issueBody.match(commandRegex) || [''])[0].trim() : '/agent';
+                targetNumber = String(issue.number);
+                targetKind = 'issue';
+                reason = `Accepted issue trigger on #${targetNumber}`;
+              } else {
+                reason = 'Issue event without agent:run label or command';
+              }
+            } else if (eventName === 'pull_request') {
+              const labels = (pr.labels || []).map((l) => l.name);
+              const hasRunLabel = labelName === 'agent:run' || labels.includes('agent:run');
+              if (hasRunLabel) {
+                shouldRun = true;
+                mode = 'command';
+                command = '/agent';
+                targetNumber = String(pr.number);
+                targetKind = 'pr';
+                reason = `Accepted PR trigger on #${targetNumber}`;
+              } else {
+                reason = 'PR event without agent:run label';
+              }
+            }
+
+            core.setOutput('should_run', shouldRun ? 'true' : 'false');
+            core.setOutput('reason', reason);
+            core.setOutput('mode', mode);
+            core.setOutput('target_number', targetNumber);
+            core.setOutput('target_kind', targetKind);
+            core.setOutput('command', command);
+
+            core.notice(reason);
+
+  run-agent:
+    needs: route
+    if: needs.route.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post execution marker
+        if: needs.route.outputs.mode == 'command'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const issue_number = Number('${{ needs.route.outputs.target_number }}');
+            const targetKind = '${{ needs.route.outputs.target_kind }}';
+            const command = '${{ needs.route.outputs.command }}';
+            const body = [
+              '<!-- agent-managed -->',
+              `Accepted ${command} for ${targetKind} #${issue_number}.`,
+              'Agent run queued by workflow gate.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
+
+      - name: Create daily triage issue
+        if: needs.route.outputs.mode == 'schedule'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const today = new Date().toISOString().slice(0, 10);
+            const title = `[agent] Morning triage ${today}`;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'agent,triage',
+              per_page: 100,
+            });
+            if (issues.some((i) => i.title === title)) {
+              core.notice(`Triage issue already exists: ${title}`);
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['agent', 'triage'],
+              body: [
+                '<!-- agent-managed -->',
+                'Automated morning checkpoint.',
+                '- Review nightly reports',
+                '- Decide whether code changes are needed',
+                '- Trigger /agent on selected issues or PRs',
+              ].join('\n'),
+            });
